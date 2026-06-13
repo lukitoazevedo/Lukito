@@ -417,10 +417,30 @@ export default function ParticipantArea({
               <button
                 id="btn-share-pool-link"
                 onClick={() => {
-                  const shareUrl = `${window.location.origin}${window.location.pathname}?shared=true`;
-                  navigator.clipboard.writeText(shareUrl).then(() => {
-                    alert("✅ Link do Bolão copiado! Compartilhe o link no WhatsApp. Amigos que usarem este link não terão acesso ao painel de administração.");
-                  });
+                  try {
+                    const dataToShare = {
+                      boloes: boloes,
+                      partidas: partidas
+                    };
+                    const jsonStr = JSON.stringify(dataToShare);
+                    const utf8Bytes = new TextEncoder().encode(jsonStr);
+                    let binString = "";
+                    for (let i = 0; i < utf8Bytes.length; i++) {
+                      binString += String.fromCharCode(utf8Bytes[i]);
+                    }
+                    const base64Data = btoa(binString);
+                    const shareUrl = `${window.location.origin}${window.location.pathname}?shared=true&data=${encodeURIComponent(base64Data)}`;
+                    
+                    navigator.clipboard.writeText(shareUrl).then(() => {
+                      alert("✅ Link do Bolão copiado! Compartilhe o link no WhatsApp. Amigos que usarem este link terão os bolões e partidas 100% atualizados (com novos bolões inclusos e os removidos ocultados) e não terão acesso ao menu administrativo.");
+                    });
+                  } catch (err) {
+                    console.error("Erro ao gerar link de compartilhamento:", err);
+                    const fallbackUrl = `${window.location.origin}${window.location.pathname}?shared=true`;
+                    navigator.clipboard.writeText(fallbackUrl).then(() => {
+                      alert("✅ Link do Bolão copiado (Link Geral).");
+                    });
+                  }
                 }}
                 className="px-4 py-2 bg-slate-950 hover:bg-slate-800 text-slate-200 border border-slate-800 text-xs font-extrabold rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shrink-0"
               >

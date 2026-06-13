@@ -83,21 +83,54 @@ export default function App() {
     }
 
     // Check shared URL mode
+    let sharedBoloes = null;
+    let sharedPartidas = null;
+
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
       if (params.get('shared') === 'true') {
         setIsSharedView(true);
+        const encodedData = params.get('data');
+        if (encodedData) {
+          try {
+            const binString = atob(encodedData);
+            const bytes = new Uint8Array(binString.length);
+            for (let i = 0; i < binString.length; i++) {
+              bytes[i] = binString.charCodeAt(i);
+            }
+            const jsonStr = new TextDecoder().decode(bytes);
+            const parsed = JSON.parse(jsonStr);
+            if (parsed && typeof parsed === 'object') {
+              if (Array.isArray(parsed.boloes)) {
+                sharedBoloes = parsed.boloes;
+              }
+              if (Array.isArray(parsed.partidas)) {
+                sharedPartidas = parsed.partidas;
+              }
+            }
+          } catch (e) {
+            console.error("Error decoding shared URL data:", e);
+          }
+        }
       }
     }
 
-    if (savedBoloes) setBoloes(JSON.parse(savedBoloes));
-    else {
+    if (sharedBoloes) {
+      setBoloes(sharedBoloes);
+      localStorage.setItem('bolao_boloes', JSON.stringify(sharedBoloes));
+    } else if (savedBoloes) {
+      setBoloes(JSON.parse(savedBoloes));
+    } else {
       setBoloes(INITIAL_BOLOES);
       localStorage.setItem('bolao_boloes', JSON.stringify(INITIAL_BOLOES));
     }
 
-    if (savedPartidas) setPartidas(JSON.parse(savedPartidas));
-    else {
+    if (sharedPartidas) {
+      setPartidas(sharedPartidas);
+      localStorage.setItem('bolao_partidas', JSON.stringify(sharedPartidas));
+    } else if (savedPartidas) {
+      setPartidas(JSON.parse(savedPartidas));
+    } else {
       setPartidas(INITIAL_PARTIDAS);
       localStorage.setItem('bolao_partidas', JSON.stringify(INITIAL_PARTIDAS));
     }
