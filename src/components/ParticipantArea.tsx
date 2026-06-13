@@ -15,6 +15,7 @@ interface ParticipantAreaProps {
   palpites: Palpite[];
   currentUser: Usuario | null;
   notificacoes: Notificacao[];
+  activeAdmin: string | null;
   onLogin: (nome: string, celular: string) => void;
   onLogout: () => void;
   onAddPalpite: (partidaId: string, resultado: string) => void;
@@ -28,6 +29,7 @@ export default function ParticipantArea({
   palpites,
   currentUser,
   notificacoes,
+  activeAdmin,
   onLogin,
   onLogout,
   onAddPalpite,
@@ -403,52 +405,6 @@ export default function ParticipantArea({
               </div>
             </div>
 
-            {/* COMPARTILHAR LINK DO BOLÃO */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-emerald-500/5 border border-emerald-500/10 rounded-2xl">
-              <div className="space-y-0.5">
-                <span className="text-xs font-bold text-emerald-400 block flex items-center gap-1.5">
-                  <Sparkles size={14} className="text-amber-400 animate-pulse" />
-                  📢 Convide mais Participantes!
-                </span>
-                <span className="text-[11px] text-slate-400 block leading-tight">
-                  Gere um link direto para convidar seus amigos para darem palpites. Eles não terão acesso ao menu administrativo.
-                </span>
-              </div>
-              <button
-                id="btn-share-pool-link"
-                onClick={() => {
-                  try {
-                    const dataToShare = {
-                      boloes: boloes,
-                      partidas: partidas
-                    };
-                    const jsonStr = JSON.stringify(dataToShare);
-                    const utf8Bytes = new TextEncoder().encode(jsonStr);
-                    let binString = "";
-                    for (let i = 0; i < utf8Bytes.length; i++) {
-                      binString += String.fromCharCode(utf8Bytes[i]);
-                    }
-                    const base64Data = btoa(binString);
-                    const shareUrl = `${window.location.origin}${window.location.pathname}?shared=true&data=${encodeURIComponent(base64Data)}`;
-                    
-                    navigator.clipboard.writeText(shareUrl).then(() => {
-                      alert("✅ Link do Bolão copiado! Compartilhe o link no WhatsApp. Amigos que usarem este link terão os bolões e partidas 100% atualizados (com novos bolões inclusos e os removidos ocultados) e não terão acesso ao menu administrativo.");
-                    });
-                  } catch (err) {
-                    console.error("Erro ao gerar link de compartilhamento:", err);
-                    const fallbackUrl = `${window.location.origin}${window.location.pathname}?shared=true`;
-                    navigator.clipboard.writeText(fallbackUrl).then(() => {
-                      alert("✅ Link do Bolão copiado (Link Geral).");
-                    });
-                  }
-                }}
-                className="px-4 py-2 bg-slate-950 hover:bg-slate-800 text-slate-200 border border-slate-800 text-xs font-extrabold rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shrink-0"
-              >
-                <Copy size={13} className="text-emerald-400" />
-                Copiar Link Seguro
-              </button>
-            </div>
-
             {/* PRESENTING ACTIVE PARTIDA DETAILS WITH COUNTDOWN */}
             {currentPartida ? (
               <div id="active-match-hero-card" className="bg-slate-950 border border-slate-800/80 rounded-2xl p-6 space-y-4">
@@ -506,6 +462,54 @@ export default function ParticipantArea({
                   <div className="bg-yellow-500/10 border border-yellow-500/20 p-4 rounded-xl text-center">
                     <span className="text-xs uppercase tracking-widest text-yellow-300 font-bold block mb-1">PARTIDA ENCERRADA</span>
                     <span className="text-2xl font-black text-white font-mono">Placar: {currentPartida.resultado_oficial}</span>
+                  </div>
+                )}
+
+                {/* COMPARTILHAR LINK DO BOLÃO (ADMIN EXCLUSIVE) INTEGRATED INTO THE ACTIVE MATCH DETAILS CARD */}
+                {activeAdmin !== null && (
+                  <div className="mt-4 pt-4 border-t border-slate-900 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-emerald-500/5 p-3 rounded-xl border border-emerald-500/10">
+                    <div className="space-y-0.5">
+                      <span className="text-[11px] font-bold text-emerald-400 flex items-center gap-1.5">
+                        <Sparkles size={13} className="text-amber-400 animate-pulse" />
+                        📢 Compartilhar Bolão (Exclusivo Adm)
+                      </span>
+                      <span className="text-[10px] text-slate-400 block leading-tight">
+                        Este botão é exibido apenas para o Administrador ativo. Amigos que usarem este link terão as informações atualizadas e não verão a aba administrativa.
+                      </span>
+                    </div>
+                    <button
+                      id="btn-share-pool-link"
+                      onClick={() => {
+                        try {
+                          const dataToShare = {
+                            boloes: boloes,
+                            partidas: partidas
+                          };
+                          const jsonStr = JSON.stringify(dataToShare);
+                          const utf8Bytes = new TextEncoder().encode(jsonStr);
+                          let binString = "";
+                          for (let i = 0; i < utf8Bytes.length; i++) {
+                            binString += String.fromCharCode(utf8Bytes[i]);
+                          }
+                          const base64Data = btoa(binString);
+                          const shareUrl = `${window.location.origin}${window.location.pathname}?shared=true&data=${encodeURIComponent(base64Data)}`;
+                          
+                          navigator.clipboard.writeText(shareUrl).then(() => {
+                            alert("✅ Link do Bolão copiado! Compartilhe o link no WhatsApp. Amigos que usarem este link terão os bolões e partidas 100% atualizados (com novos bolões inclusos e os removidos ocultados) e não terão acesso ao menu administrativo.");
+                          });
+                        } catch (err) {
+                          console.error("Erro ao gerar link de compartilhamento:", err);
+                          const fallbackUrl = `${window.location.origin}${window.location.pathname}?shared=true`;
+                          navigator.clipboard.writeText(fallbackUrl).then(() => {
+                            alert("✅ Link do Bolão copiado (Link Geral).");
+                          });
+                        }
+                      }}
+                      className="px-3 py-1.5 bg-slate-950 hover:bg-slate-800 text-slate-200 border border-slate-800 text-[11px] font-black rounded-lg transition-all flex items-center gap-1.5 cursor-pointer shrink-0"
+                    >
+                      <Copy size={12} className="text-emerald-400" />
+                      Copiar Link Seguro
+                    </button>
                   </div>
                 )}
               </div>

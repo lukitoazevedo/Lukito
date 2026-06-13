@@ -158,6 +158,62 @@ export default function App() {
     }
   }, []);
 
+  // Listen to cross-tab storage changes to synchronize User and Admin views in real-time
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (!e.key) return;
+      if (e.newValue === null) {
+        if (e.key === 'bolao_currentUser') {
+          setCurrentUser(null);
+        }
+        if (e.key === 'bolao_activeAdmin') {
+          setActiveAdmin(null);
+        }
+        return;
+      }
+      try {
+        const parsed = JSON.parse(e.newValue);
+        switch (e.key) {
+          case 'bolao_boloes':
+            setBoloes(parsed);
+            break;
+          case 'bolao_partidas':
+            setPartidas(parsed);
+            break;
+          case 'bolao_palpites':
+            setPalpites(parsed);
+            break;
+          case 'bolao_notificacoes':
+            setNotificacoes(parsed);
+            break;
+          case 'bolao_usuarios':
+            setUsuarios(parsed);
+            break;
+          case 'bolao_admins':
+            setAdmins(parsed);
+            break;
+          case 'bolao_currentUser':
+            setCurrentUser(parsed);
+            break;
+          case 'bolao_activeAdmin':
+            setActiveAdmin(e.newValue);
+            break;
+          default:
+            break;
+        }
+      } catch (err) {
+        if (e.key === 'bolao_activeAdmin') {
+          setActiveAdmin(e.newValue);
+        }
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, []);
+
   // Save changes helper
   const saveState = (key: string, data: any) => {
     localStorage.setItem(key, JSON.stringify(data));
@@ -465,6 +521,7 @@ export default function App() {
               palpites={palpites}
               currentUser={currentUser}
               notificacoes={notificacoes}
+              activeAdmin={activeAdmin}
               onLogin={handleLogin}
               onLogout={handleLogout}
               onAddPalpite={handleAddPalpite}
