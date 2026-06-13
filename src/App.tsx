@@ -55,8 +55,9 @@ export default function App() {
   // Link shared views indicator
   const [isSharedView, setIsSharedView] = useState(false);
 
-  // Load state from localStorage on Mount
+  // Load state from localStorage on Mount and configure API polling
   useEffect(() => {
+    // 1. Initial configuration from local storage
     const savedBoloes = localStorage.getItem('bolao_boloes');
     const savedPartidas = localStorage.getItem('bolao_partidas');
     const savedUsuarios = localStorage.getItem('bolao_usuarios');
@@ -64,7 +65,6 @@ export default function App() {
     const savedNotifs = localStorage.getItem('bolao_notificacoes');
     const savedCurrentUser = localStorage.getItem('bolao_currentUser');
 
-    // Load admin accounts list or seed default
     const savedAdmins = localStorage.getItem('bolao_admins');
     if (savedAdmins) {
       setAdmins(JSON.parse(savedAdmins));
@@ -76,103 +76,107 @@ export default function App() {
       localStorage.setItem('bolao_admins', JSON.stringify(initialAdmins));
     }
 
-    // Load logged-in admin session
     const savedActiveAdmin = localStorage.getItem('bolao_activeAdmin');
     if (savedActiveAdmin) {
       setActiveAdmin(savedActiveAdmin);
     }
 
-    // Check shared URL mode
-    let sharedBoloes = null;
-    let sharedPartidas = null;
+    if (savedBoloes) setBoloes(JSON.parse(savedBoloes));
+    else setBoloes(INITIAL_BOLOES);
 
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search);
-      if (params.get('shared') === 'true') {
-        setIsSharedView(true);
-        const encodedData = params.get('data');
-        if (encodedData) {
-          try {
-            const binString = atob(encodedData);
-            const bytes = new Uint8Array(binString.length);
-            for (let i = 0; i < binString.length; i++) {
-              bytes[i] = binString.charCodeAt(i);
-            }
-            const jsonStr = new TextDecoder().decode(bytes);
-            const parsed = JSON.parse(jsonStr);
-            if (parsed && typeof parsed === 'object') {
-              if (Array.isArray(parsed.boloes)) {
-                sharedBoloes = parsed.boloes;
-              }
-              if (Array.isArray(parsed.partidas)) {
-                sharedPartidas = parsed.partidas;
-              }
-            }
-          } catch (e) {
-            console.error("Error decoding shared URL data:", e);
-          }
-        }
-      }
-    }
-
-    if (sharedBoloes) {
-      setBoloes(sharedBoloes);
-      localStorage.setItem('bolao_boloes', JSON.stringify(sharedBoloes));
-    } else if (savedBoloes) {
-      setBoloes(JSON.parse(savedBoloes));
-    } else {
-      setBoloes(INITIAL_BOLOES);
-      localStorage.setItem('bolao_boloes', JSON.stringify(INITIAL_BOLOES));
-    }
-
-    if (sharedPartidas) {
-      setPartidas(sharedPartidas);
-      localStorage.setItem('bolao_partidas', JSON.stringify(sharedPartidas));
-    } else if (savedPartidas) {
-      setPartidas(JSON.parse(savedPartidas));
-    } else {
-      setPartidas(INITIAL_PARTIDAS);
-      localStorage.setItem('bolao_partidas', JSON.stringify(INITIAL_PARTIDAS));
-    }
+    if (savedPartidas) setPartidas(JSON.parse(savedPartidas));
+    else setPartidas(INITIAL_PARTIDAS);
 
     if (savedUsuarios) setUsuarios(JSON.parse(savedUsuarios));
-    else {
-      setUsuarios(INITIAL_USUARIOS);
-      localStorage.setItem('bolao_usuarios', JSON.stringify(INITIAL_USUARIOS));
-    }
+    else setUsuarios(INITIAL_USUARIOS);
 
     if (savedPalpites) setPalpites(JSON.parse(savedPalpites));
-    else {
-      setPalpites(INITIAL_PALPITES);
-      localStorage.setItem('bolao_palpites', JSON.stringify(INITIAL_PALPITES));
-    }
+    else setPalpites(INITIAL_PALPITES);
 
     if (savedNotifs) setNotificacoes(JSON.parse(savedNotifs));
-    else {
-      setNotificacoes(INITIAL_NOTIFICACOES);
-      localStorage.setItem('bolao_notificacoes', JSON.stringify(INITIAL_NOTIFICACOES));
-    }
+    else setNotificacoes(INITIAL_NOTIFICACOES);
 
     if (savedCurrentUser) {
       setCurrentUser(JSON.parse(savedCurrentUser));
     }
+
+    // 2. Extrapolate Shared View parameters
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('shared') === 'true') {
+        setIsSharedView(true);
+      }
+    }
+
+    // 3. One-off immediate fetch from API to get the latest state
+    fetch("/api/state")
+      .then(res => res.json())
+      .then(data => {
+        if (data && typeof data === "object") {
+          if (Array.isArray(data.boloes)) setBoloes(data.boloes);
+          if (Array.isArray(data.partidas)) setPartidas(data.partidas);
+          if (Array.isArray(data.usuarios)) setUsuarios(data.usuarios);
+          if (Array.isArray(data.palpites)) setPalpites(data.palpites);
+          if (Array.isArray(data.notificacoes)) setNotificacoes(data.notificacoes);
+          if (Array.isArray(data.admins)) setAdmins(data.admins);
+        }
+      })
+      .catch(err => console.warn("Failed first-fetch from state API, running offline-first:", err));
   }, []);
 
-  // Listen to cross-tab storage changes to synchronize User and Admin views in real-time
+  // 4. Polling effect to keep views synchronized in real-time across users, tabs and screens
+  useEffect(() => {
+    const fetchState = () => {
+      fetch("/api/state")
+        .then(res => res.json())
+        .then(data => {
+          if (data && typeof data === "object") {
+            if (Array.isArray(data.boloes) && JSON.stringify(boloes) !== JSON.stringify(data.boloes)) {
+              setBoloes(data.boloes);
+            }
+            if (Array.isArray(data.partidas) && JSON.stringify(partidas) !== JSON.stringify(data.partidas)) {
+              setPartidas(data.partidas);
+            }
+            if (Array.isArray(data.usuarios)) {
+              if (JSON.stringify(usuarios) !== JSON.stringify(data.usuarios)) {
+                setUsuarios(data.usuarios);
+              }
+              // If current user is deleted by admin, log out!
+              if (currentUser && !data.usuarios.some((u: any) => u.id === currentUser.id)) {
+                setCurrentUser(null);
+                localStorage.removeItem('bolao_currentUser');
+              }
+            }
+            if (Array.isArray(data.palpites) && JSON.stringify(palpites) !== JSON.stringify(data.palpites)) {
+              setPalpites(data.palpites);
+            }
+            if (Array.isArray(data.notificacoes) && JSON.stringify(notificacoes) !== JSON.stringify(data.notificacoes)) {
+              setNotificacoes(data.notificacoes);
+            }
+            if (Array.isArray(data.admins) && JSON.stringify(admins) !== JSON.stringify(data.admins)) {
+              setAdmins(data.admins);
+            }
+          }
+        })
+        .catch(err => {
+          console.warn("Polling state sync error:", err);
+        });
+    };
+
+    const interval = setInterval(fetchState, 2000);
+    return () => clearInterval(interval);
+  }, [boloes, partidas, usuarios, palpites, notificacoes, admins, currentUser]);
+
+  // Keep cross-tab localStorage backup handler for redundancy on single browser actions
   useEffect(() => {
     const handleStorageChange = (e: StorageEvent) => {
       if (!e.key) return;
       if (e.newValue === null) {
-        if (e.key === 'bolao_currentUser') {
-          setCurrentUser(null);
-        }
-        if (e.key === 'bolao_activeAdmin') {
-          setActiveAdmin(null);
-        }
+        if (e.key === 'bolao_currentUser') setCurrentUser(null);
+        if (e.key === 'bolao_activeAdmin') setActiveAdmin(null);
         return;
       }
 
-      // Bypass JSON parsing for raw string admin usernames
       if (e.key === 'bolao_activeAdmin') {
         setActiveAdmin(e.newValue);
         return;
@@ -181,44 +185,33 @@ export default function App() {
       try {
         const parsed = JSON.parse(e.newValue);
         switch (e.key) {
-          case 'bolao_boloes':
-            setBoloes(parsed);
-            break;
-          case 'bolao_partidas':
-            setPartidas(parsed);
-            break;
-          case 'bolao_palpites':
-            setPalpites(parsed);
-            break;
-          case 'bolao_notificacoes':
-            setNotificacoes(parsed);
-            break;
-          case 'bolao_usuarios':
-            setUsuarios(parsed);
-            break;
-          case 'bolao_admins':
-            setAdmins(parsed);
-            break;
-          case 'bolao_currentUser':
-            setCurrentUser(parsed);
-            break;
-          default:
-            break;
+          case 'bolao_boloes': setBoloes(parsed); break;
+          case 'bolao_partidas': setPartidas(parsed); break;
+          case 'bolao_palpites': setPalpites(parsed); break;
+          case 'bolao_notificacoes': setNotificacoes(parsed); break;
+          case 'bolao_usuarios': setUsuarios(parsed); break;
+          case 'bolao_admins': setAdmins(parsed); break;
+          case 'bolao_currentUser': setCurrentUser(parsed); break;
+          default: break;
         }
       } catch (err) {
-        console.warn("Storage change handling skipped for non-JSON or corrupted data:", e.key, err);
+        console.warn("Storage change handling skipped:", e.key, err);
       }
     };
 
     window.addEventListener('storage', handleStorageChange);
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-    };
+    return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
 
-  // Save changes helper
+  // Save changes helper with automatic server backup synchronization
   const saveState = (key: string, data: any) => {
     localStorage.setItem(key, JSON.stringify(data));
+    const serverKey = key.replace('bolao_', '');
+    fetch('/api/state', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ [serverKey]: data })
+    }).catch(err => console.error(`Error saving ${key} to server:`, err));
   };
 
   // 1. Actions: add a sweepstakes (Bolão)
@@ -445,27 +438,58 @@ export default function App() {
   // Force local state factory reset to seeded values
   const handleResetAppSeededData = () => {
     if (confirm("Deseja restaurar as configurações originais com dados de exemplo? Todos os seus palpites atuais serão sobrescritos.")) {
-      setBoloes(INITIAL_BOLOES);
-      setPartidas(INITIAL_PARTIDAS);
-      setUsuarios(INITIAL_USUARIOS);
-      setPalpites(INITIAL_PALPITES);
-      setNotificacoes(INITIAL_NOTIFICACOES);
-      setCurrentUser(null);
-      setActiveAdmin(null);
-      
-      const initialAdmins: AdminUser[] = [
-        { id: 'admin-default', username: 'admin', pin: '1234', created_at: new Date().toISOString() }
-      ];
-      setAdmins(initialAdmins);
-      
-      localStorage.setItem('bolao_boloes', JSON.stringify(INITIAL_BOLOES));
-      localStorage.setItem('bolao_partidas', JSON.stringify(INITIAL_PARTIDAS));
-      localStorage.setItem('bolao_usuarios', JSON.stringify(INITIAL_USUARIOS));
-      localStorage.setItem('bolao_palpites', JSON.stringify(INITIAL_PALPITES));
-      localStorage.setItem('bolao_notificacoes', JSON.stringify(INITIAL_NOTIFICACOES));
-      localStorage.setItem('bolao_admins', JSON.stringify(initialAdmins));
-      localStorage.removeItem('bolao_currentUser');
-      localStorage.removeItem('bolao_activeAdmin');
+      fetch("/api/reset", {
+        method: "POST"
+      })
+      .then(res => res.json())
+      .then(resData => {
+        if (resData && resData.success && resData.state) {
+          const s = resData.state;
+          setBoloes(s.boloes);
+          setPartidas(s.partidas);
+          setUsuarios(s.usuarios);
+          setPalpites(s.palpites);
+          setNotificacoes(s.notificacoes);
+          setCurrentUser(null);
+          setActiveAdmin(null);
+          
+          const initialAdmins: AdminUser[] = s.admins;
+          setAdmins(initialAdmins);
+          
+          localStorage.setItem('bolao_boloes', JSON.stringify(s.boloes));
+          localStorage.setItem('bolao_partidas', JSON.stringify(s.partidas));
+          localStorage.setItem('bolao_usuarios', JSON.stringify(s.usuarios));
+          localStorage.setItem('bolao_palpites', JSON.stringify(s.palpites));
+          localStorage.setItem('bolao_notificacoes', JSON.stringify(s.notificacoes));
+          localStorage.setItem('bolao_admins', JSON.stringify(initialAdmins));
+          localStorage.removeItem('bolao_currentUser');
+          localStorage.removeItem('bolao_activeAdmin');
+        }
+      })
+      .catch(err => {
+        console.error("Error resetting server data, executing offline-only reset:", err);
+        setBoloes(INITIAL_BOLOES);
+        setPartidas(INITIAL_PARTIDAS);
+        setUsuarios(INITIAL_USUARIOS);
+        setPalpites(INITIAL_PALPITES);
+        setNotificacoes(INITIAL_NOTIFICACOES);
+        setCurrentUser(null);
+        setActiveAdmin(null);
+        
+        const initialAdmins: AdminUser[] = [
+          { id: 'admin-default', username: 'admin', pin: '1234', created_at: new Date().toISOString() }
+        ];
+        setAdmins(initialAdmins);
+        
+        localStorage.setItem('bolao_boloes', JSON.stringify(INITIAL_BOLOES));
+        localStorage.setItem('bolao_partidas', JSON.stringify(INITIAL_PARTIDAS));
+        localStorage.setItem('bolao_usuarios', JSON.stringify(INITIAL_USUARIOS));
+        localStorage.setItem('bolao_palpites', JSON.stringify(INITIAL_PALPITES));
+        localStorage.setItem('bolao_notificacoes', JSON.stringify(INITIAL_NOTIFICACOES));
+        localStorage.setItem('bolao_admins', JSON.stringify(initialAdmins));
+        localStorage.removeItem('bolao_currentUser');
+        localStorage.removeItem('bolao_activeAdmin');
+      });
     }
   };
 
