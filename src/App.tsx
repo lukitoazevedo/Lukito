@@ -393,6 +393,25 @@ export default function App() {
     saveState('bolao_admins', updated);
   };
 
+  const handleDeleteUsuario = (usuarioId: string) => {
+    const updatedUsers = usuarios.filter(u => u.id !== usuarioId);
+    setUsuarios(updatedUsers);
+    saveState('bolao_usuarios', updatedUsers);
+
+    if (currentUser?.id === usuarioId) {
+      setCurrentUser(null);
+      localStorage.removeItem('bolao_currentUser');
+    }
+
+    const updatedPalpites = palpites.filter(p => p.usuario_id !== usuarioId);
+    setPalpites(updatedPalpites);
+    saveState('bolao_palpites', updatedPalpites);
+
+    const updatedNotifs = notificacoes.filter(n => n.usuario_id !== usuarioId);
+    setNotificacoes(updatedNotifs);
+    saveState('bolao_notificacoes', updatedNotifs);
+  };
+
   const handleLogoutAdmin = () => {
     setActiveAdmin(null);
     localStorage.removeItem('bolao_activeAdmin');
@@ -637,6 +656,7 @@ export default function App() {
                   onAddAdmin={handleAddAdmin}
                   onDeleteAdmin={handleDeleteAdmin}
                   onLogoutAdmin={handleLogoutAdmin}
+                  onDeleteUsuario={handleDeleteUsuario}
                 />
               )}
             </>

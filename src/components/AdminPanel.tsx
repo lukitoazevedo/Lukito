@@ -42,6 +42,7 @@ interface AdminPanelProps {
   onAddAdmin: (username: string, pin: string) => void;
   onDeleteAdmin: (adminId: string) => void;
   onLogoutAdmin: () => void;
+  onDeleteUsuario: (usuarioId: string) => void;
 }
 
 export default function AdminPanel({
@@ -59,6 +60,7 @@ export default function AdminPanel({
   onAddAdmin,
   onDeleteAdmin,
   onLogoutAdmin,
+  onDeleteUsuario,
 }: AdminPanelProps) {
   // New Sweepstakes Form state
   const [newBolao, setNewBolao] = useState({
@@ -614,9 +616,23 @@ export default function AdminPanel({
                               <span>{u.celular.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3') || u.celular}</span>
                             </p>
                           </div>
-                          <span className="text-[10px] bg-slate-900 text-slate-400 px-2 py-0.5 rounded-lg font-mono border border-slate-800/60 font-bold shrink-0">
-                            {userGuesses.length} {userGuesses.length === 1 ? 'palpite' : 'palpites'}
-                          </span>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className="text-[10px] bg-slate-900 text-slate-400 px-2 py-0.5 rounded-lg font-mono border border-slate-800/60 font-bold shrink-0">
+                              {userGuesses.length} {userGuesses.length === 1 ? 'palpite' : 'palpites'}
+                            </span>
+                            <button
+                              id={`admin-btn-delete-user-${u.id}`}
+                              onClick={() => {
+                                if (confirm(`Deseja realmente remover o participante "${u.nome_usuario.toUpperCase()}"?\n\nEsta ação excluirá permanentemente o cadastro e TODOS os palpites vinculados a ele!`)) {
+                                  onDeleteUsuario(u.id);
+                                }
+                              }}
+                              className="p-1.5 bg-rose-550/10 hover:bg-rose-500 text-rose-450 hover:text-white border border-rose-500/10 hover:border-transparent rounded-lg transition-all cursor-pointer"
+                              title="Excluir Participante"
+                            >
+                              <Trash2 size={12} />
+                            </button>
+                          </div>
                         </div>
 
                         <div className="space-y-2 flex-grow">
