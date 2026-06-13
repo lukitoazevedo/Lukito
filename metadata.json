@@ -1,0 +1,6 @@
+{
+  "name": "FutBolão - Gestão de Bolão",
+  "description": "Aplicativo completo de gestão e participação em bolões de futebol, com matriz de palpites, controle de PIX, notificações de aprovação, cálculo automático de saldo/prêmios e dashboard administrativo.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
