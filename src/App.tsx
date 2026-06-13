@@ -171,6 +171,13 @@ export default function App() {
         }
         return;
       }
+
+      // Bypass JSON parsing for raw string admin usernames
+      if (e.key === 'bolao_activeAdmin') {
+        setActiveAdmin(e.newValue);
+        return;
+      }
+
       try {
         const parsed = JSON.parse(e.newValue);
         switch (e.key) {
@@ -195,16 +202,11 @@ export default function App() {
           case 'bolao_currentUser':
             setCurrentUser(parsed);
             break;
-          case 'bolao_activeAdmin':
-            setActiveAdmin(e.newValue);
-            break;
           default:
             break;
         }
       } catch (err) {
-        if (e.key === 'bolao_activeAdmin') {
-          setActiveAdmin(e.newValue);
-        }
+        console.warn("Storage change handling skipped for non-JSON or corrupted data:", e.key, err);
       }
     };
 

@@ -205,6 +205,104 @@ export default function ResultsArea({
         )}
       </div>
 
+      {/* CARD: PARTICIPANTES CADASTRADOS & PLACARES REGISTRADOS */}
+      <div id="results-registered-users-card" className="bg-slate-900 border border-slate-800 rounded-3xl p-6 mt-8">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-slate-800">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center border border-emerald-500/20">
+              <Users size={20} />
+            </div>
+            <div>
+              <h3 id="users-card-title" className="text-base font-bold text-white">Participantes Cadastrados & Placares Registrados</h3>
+              <p className="text-xs text-slate-400 mt-0.5">Veja todos os usuários em ordem alfabética, seus telefones e todos os palpites registrados por eles.</p>
+            </div>
+          </div>
+          <span className="text-xs bg-slate-950 text-emerald-400 border border-emerald-500/15 px-3 py-1.5 rounded-xl font-bold">
+            Total: {usuarios.length} {usuarios.length === 1 ? 'Usuário' : 'Usuários'}
+          </span>
+        </div>
+
+        {usuarios.length === 0 ? (
+          <div className="text-center py-10 text-slate-500 text-xs bg-slate-950/40 rounded-2xl border border-slate-800">
+            Nenhum participante cadastrado no sistema ainda.
+          </div>
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-2">
+            {[...usuarios]
+              .sort((a, b) => a.nome_usuario.toLowerCase().localeCompare(b.nome_usuario.toLowerCase()))
+              .map(u => {
+                // Find all palpites for this user
+                const userGuesses = palpites.filter(p => p.usuario_id === u.id);
+
+                return (
+                  <div id={`user-detail-card-${u.id}`} key={u.id} className="bg-slate-950 border border-slate-800/85 rounded-2xl p-4 flex flex-col justify-between gap-4 hover:border-slate-700/80 transition-all">
+                    <div className="flex items-start justify-between gap-2 border-b border-slate-900 pb-3">
+                      <div>
+                        <h4 className="font-extrabold text-white text-sm tracking-wide capitalize">{u.nome_usuario}</h4>
+                        <p className="text-[11px] text-emerald-400 font-mono mt-1 flex items-center gap-1 font-semibold">
+                          <span>📞</span>
+                          <span>{u.celular.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3') || u.celular}</span>
+                        </p>
+                      </div>
+                      <span className="text-[10px] bg-slate-900 text-slate-400 px-2 py-0.5 rounded-lg font-mono border border-slate-800/60 font-bold shrink-0">
+                        {userGuesses.length} {userGuesses.length === 1 ? 'palpite' : 'palpites'}
+                      </span>
+                    </div>
+
+                    <div className="space-y-2 flex-grow">
+                      <span className="text-[9px] text-slate-500 uppercase tracking-wider block font-black">Placares Chutados:</span>
+                      {userGuesses.length === 0 ? (
+                        <span className="text-[11px] text-slate-550 block italic">Nenhum palpite registrado ainda.</span>
+                      ) : (
+                        <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
+                          {userGuesses.map(g => {
+                            const match = partidas.find(m => m.id === g.partida_id);
+                            return (
+                              <div key={g.id} className="flex items-center justify-between gap-2 text-[11px] bg-slate-900/60 p-2 rounded-lg border border-slate-850">
+                                <div className="truncate text-slate-300 font-semibold text-[10px] sm:text-[11px]">
+                                  {match ? (
+                                    <span className="flex items-center gap-1">
+                                      <span>{match.selecao_1}</span>
+                                      <span className="text-slate-500 font-mono">x</span>
+                                      <span>{match.selecao_2}</span>
+                                    </span>
+                                  ) : (
+                                    'Partida deletada'
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-1.5 shrink-0">
+                                  <span className="px-1.5 py-0.5 bg-slate-950 text-emerald-400 font-mono font-bold rounded">
+                                    {g.resultado}
+                                  </span>
+                                  {g.status === 'PENDENTE' && (
+                                    <span className="text-[8px] bg-amber-500/10 text-amber-500 px-1 py-0.5 rounded font-black uppercase tracking-wider border border-amber-500/10">
+                                      Pend
+                                    </span>
+                                  )}
+                                  {g.status === 'CONFIRMADO' && (
+                                    <span className="text-[8px] bg-emerald-500/10 text-emerald-400 px-1 py-0.5 rounded font-black uppercase tracking-wider border border-emerald-500/10">
+                                      Conf
+                                    </span>
+                                  )}
+                                  {g.status === 'REJEITADO' && (
+                                    <span className="text-[8px] bg-rose-500/10 text-rose-500 px-1 py-0.5 rounded font-black uppercase tracking-wider border border-rose-500/10">
+                                      Rej
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+          </div>
+        )}
+      </div>
+
     </div>
   );
 }
