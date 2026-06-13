@@ -4,19 +4,44 @@
  */
 
 import React, { useState } from 'react';
-import { Bolao, Partida, Palpite, Usuario } from '../types';
+import { Bolao, Partida, Palpite, Usuario, AdminUser } from '../types';
 import { getTeamFlagUrl, formatBRL, formatLocalDate, exportToCSV } from '../utils';
-import { Plus, Users, Hourglass, CheckCircle2, Award, Download, Tag, Calendar, ShieldCheck, Trophy, Filter, RefreshCw, XCircle } from 'lucide-react';
+import {
+  Plus,
+  Users,
+  Hourglass,
+  CheckCircle2,
+  Award,
+  Download,
+  Tag,
+  Calendar,
+  ShieldCheck,
+  Trophy,
+  Filter,
+  RefreshCw,
+  XCircle,
+  Trash2,
+  Lock,
+  UserPlus,
+  LogOut,
+  Key
+} from 'lucide-react';
 
 interface AdminPanelProps {
   boloes: Bolao[];
   partidas: Partida[];
   usuarios: Usuario[];
   palpites: Palpite[];
+  admins: AdminUser[];
+  activeAdmin: string;
   onAddBolao: (bolao: Omit<Bolao, 'id'>) => void;
+  onDeleteBolao: (bolaoId: string) => void;
   onAddPartida: (partida: Omit<Partida, 'id' | 'bandeira_1' | 'bandeira_2' | 'resultado_oficial'>) => void;
   onUpdatePalpiteStatus: (palpiteId: string, status: 'CONFIRMADO' | 'REJEITADO') => void;
   onSetResultadoOficial: (partidaId: string, resultado: string | null) => void;
+  onAddAdmin: (username: string, pin: string) => void;
+  onDeleteAdmin: (adminId: string) => void;
+  onLogoutAdmin: () => void;
 }
 
 export default function AdminPanel({
@@ -24,10 +49,16 @@ export default function AdminPanel({
   partidas,
   usuarios,
   palpites,
+  admins,
+  activeAdmin,
   onAddBolao,
+  onDeleteBolao,
   onAddPartida,
   onUpdatePalpiteStatus,
   onSetResultadoOficial,
+  onAddAdmin,
+  onDeleteAdmin,
+  onLogoutAdmin,
 }: AdminPanelProps) {
   // New Sweepstakes Form state
   const [newBolao, setNewBolao] = useState({
@@ -55,7 +86,11 @@ export default function AdminPanel({
   const [matchScores, setMatchScores] = useState<Record<string, { g1: string, g2: string }>>({});
 
   // Active sub-tab
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'boloes' | 'partidas' | 'palpites'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'boloes' | 'partidas' | 'palpites' | 'admins'>('dashboard');
+
+  // New admin register state
+  const [newAdminUser, setNewAdminUser] = useState('');
+  const [newAdminPin, setNewAdminPin] = useState('');
 
   // Filters state
   const [filterPartidaId, setFilterPartidaId] = useState<string>('todos');
@@ -238,7 +273,7 @@ export default function AdminPanel({
       )}
 
       {/* Admin Menu Tabs */}
-      <div id="admin-menu-tabs" className="bg-slate-900 border border-slate-800 rounded-2xl p-2 flex flex-wrap gap-1">
+      <div id="admin-menu-tabs" className="bg-slate-900 border border-slate-800 rounded-2xl p-2 flex flex-wrap gap-1 items-center">
         <button
           id="btn-tab-dashboard"
           onClick={() => setActiveTab('dashboard')}
@@ -261,7 +296,7 @@ export default function AdminPanel({
           }`}
         >
           <Plus size={16} />
-          Criar Bolão
+          Criar / Ver Bolão
         </button>
         <button
           id="btn-tab-partidas"
@@ -286,6 +321,33 @@ export default function AdminPanel({
         >
           <Hourglass size={16} />
           Aprovar Palpites ({pendingGuesses.length})
+        </button>
+        <button
+          id="btn-tab-admins"
+          onClick={() => setActiveTab('admins')}
+          className={`flex-1 py-3 px-4 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-all min-w-[120px] ${
+            activeTab === 'admins'
+              ? 'bg-emerald-500 text-slate-950 shadow-md'
+              : 'text-slate-400 hover:text-white hover:bg-slate-800'
+          }`}
+        >
+          <Users size={16} />
+          Administradores
+        </button>
+
+        {/* Sign out indicator */}
+        <button
+          id="btn-logout-admin"
+          onClick={() => {
+            if (confirm("Tem certeza que deseja sair do painel administrativo?")) {
+              onLogoutAdmin();
+            }
+          }}
+          className="py-3 px-4 text-xs font-bold bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 rounded-xl flex items-center justify-center gap-1.5 transition-colors cursor-pointer min-w-[100px]"
+          title={`Sair de ${activeAdmin}`}
+        >
+          <LogOut size={14} />
+          Sair ({activeAdmin})
         </button>
       </div>
 
@@ -658,10 +720,25 @@ export default function AdminPanel({
           <div id="admin-current-boloes-section" className="mt-8 pt-8 border-t border-slate-800">
             <h4 className="text-sm font-bold text-slate-300 uppercase tracking-wider mb-4">Bolões Ativos no Sistema</h4>
             <div id="admin-current-boloes" className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {boloes.map(b => (
+               {boloes.map(b => (
                 <div id={`bolao-card-${b.id}`} key={b.id} className="bg-slate-950 border border-slate-800 rounded-2xl p-4 flex flex-col justify-between space-y-4">
                   <div>
-                    <h5 className="font-bold text-white text-base">{b.nome}</h5>
+                    <div className="flex items-start justify-between gap-2">
+                      <h5 className="font-bold text-white text-base leading-tight">{b.nome}</h5>
+                      <button
+                        id={`btn-delete-bolao-${b.id}`}
+                        onClick={() => {
+                          if (confirm(`Deseja mesmo excluir o bolão "${b.nome}"? Todas as partidas vinculadas a ele e seus respectivos palpites serão excluídos para sempre!`)) {
+                            onDeleteBolao(b.id);
+                            triggerToast(`Bolão "${b.nome}" excluído com sucesso!`);
+                          }
+                        }}
+                        className="text-slate-500 hover:text-rose-400 p-1.5 hover:bg-rose-500/10 rounded-lg transition-all cursor-pointer shrink-0"
+                        title="Excluir este Bolão"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
                     <div className="grid grid-cols-2 gap-2 mt-3 text-xs text-slate-400">
                       <div>Val: <span className="text-emerald-400 font-bold">{formatBRL(b.valor_palpite)}</span></div>
                       <div>Limite placar: <span className="text-white font-mono font-bold">{b.limite_palpites_iguais} vagas</span></div>
@@ -1016,6 +1093,154 @@ export default function AdminPanel({
                       </td>
                     </tr>
                   )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MANAGE ADMINS TAB */}
+      {activeTab === 'admins' && (
+        <div id="tab-content-admins" className="space-y-6">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6">
+            <h3 className="text-lg font-bold text-white flex items-center gap-2 mb-2">
+              <Lock className="text-emerald-400" size={20} />
+              Adicionar Novo Administrador
+            </h3>
+            <p className="text-xs text-slate-400 mb-6">
+              Novas contas cadastradas terão permissão total para criar bolões, cadastrar partidas, aprovar palpites e lançar resultados oficiais.
+            </p>
+
+            <form
+              id="form-add-new-admin"
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (!newAdminUser.trim() || !newAdminPin.trim()) {
+                  alert("Por favor, preencha o usuário e o PIN de acesso.");
+                  return;
+                }
+                const usrClean = newAdminUser.trim().toLowerCase();
+                if (admins.some(a => a.username === usrClean)) {
+                  alert("Este nome de usuário já pertence a um administrador.");
+                  return;
+                }
+                onAddAdmin(usrClean, newAdminPin.trim());
+                setNewAdminUser('');
+                setNewAdminPin('');
+                triggerToast(`Administrador "${usrClean}" adicionado com sucesso!`);
+              }}
+              className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end bg-slate-950 p-4 rounded-2xl border border-slate-800/60"
+            >
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-300 uppercase tracking-wider block">Nome de Usuário</label>
+                <div className="relative">
+                  <span className="absolute left-3 top-3 text-slate-400">
+                    <UserPlus size={16} />
+                  </span>
+                  <input
+                    id="input-new-admin-user"
+                    type="text"
+                    required
+                    placeholder="Ex: joao_soccer"
+                    value={newAdminUser}
+                    onChange={(e) => setNewAdminUser(e.target.value)}
+                    className="w-full pl-9 pr-3 py-2 bg-slate-905 border border-slate-800 rounded-xl text-white text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-300 uppercase tracking-wider block">PIN de Acesso (Senha)</label>
+                <div className="relative">
+                  <span className="absolute left-3 top-3 text-slate-400">
+                    <Key size={16} />
+                  </span>
+                  <input
+                    id="input-new-admin-pin"
+                    type="text"
+                    required
+                    placeholder="Ex: 1234"
+                    value={newAdminPin}
+                    onChange={(e) => setNewAdminPin(e.target.value)}
+                    className="w-full pl-9 pr-3 py-2 bg-slate-905 border border-slate-800 rounded-xl text-white text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500 font-mono"
+                  />
+                </div>
+              </div>
+
+              <button
+                id="btn-submit-new-admin"
+                type="submit"
+                className="w-full py-2.5 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold rounded-xl shadow transition-colors flex items-center justify-center gap-1.5 cursor-pointer text-sm"
+              >
+                <Plus size={16} />
+                Cadastrar Admin
+              </button>
+            </form>
+          </div>
+
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6">
+            <h3 className="text-lg font-bold text-white mb-4">Administradores Cadastrados</h3>
+            
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm text-slate-300">
+                <thead>
+                  <tr className="border-b border-slate-800 text-slate-400 uppercase text-[10px] tracking-wider">
+                    <th className="py-2.5">Usuário (Username)</th>
+                    <th className="py-2.5">PIN de Acesso</th>
+                    <th className="py-2.5">Data de Criação</th>
+                    <th className="py-2.5 text-right">Ações</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-800/60 font-mono text-xs">
+                  {admins.map(adm => {
+                    const isSelf = adm.username.toLowerCase() === activeAdmin.toLowerCase();
+                    return (
+                      <tr id={`admin-row-${adm.id}`} key={adm.id} className="hover:bg-slate-950/40">
+                        <td className="py-3 font-sans font-semibold text-white flex items-center gap-2">
+                          <ShieldCheck size={14} className={isSelf ? "text-emerald-400" : "text-slate-400"} />
+                          <span>{adm.username}</span>
+                          {isSelf && (
+                            <span className="px-1.5 py-0.5 bg-emerald-500/10 text-emerald-400 text-[9px] uppercase font-bold rounded-md">
+                              Você
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-3 text-slate-300 tracking-wider font-bold">
+                          {adm.pin}
+                        </td>
+                        <td className="py-3 text-slate-400 text-[11px] font-sans">
+                          {new Date(adm.created_at).toLocaleString('pt-BR')}
+                        </td>
+                        <td className="py-3 text-right">
+                          <button
+                            id={`btn-delete-admin-${adm.id}`}
+                            onClick={() => {
+                              if (isSelf) {
+                                alert("Você não pode deletar a sua própria conta ativa.");
+                                return;
+                              }
+                              if (admins.length <= 1) {
+                                alert("O sistema precisa ter pelo menos um administrador cadastrado.");
+                                return;
+                              }
+                              if (confirm(`Tem certeza que deseja revogar o acesso de administrador para "${adm.username}"?`)) {
+                                onDeleteAdmin(adm.id);
+                                triggerToast(`Acesso de "${adm.username}" revogado.`);
+                              }
+                            }}
+                            disabled={isSelf || admins.length <= 1}
+                            className={`p-1.5 rounded-lg transition-colors cursor-pointer inline-flex items-center justify-center ${
+                              isSelf ? "text-slate-600 cursor-not-allowed" : "text-slate-400 hover:text-rose-400 hover:bg-rose-500/10"
+                            }`}
+                            title={isSelf ? "Não é possível deletar a si mesmo" : "Revogar Acesso"}
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

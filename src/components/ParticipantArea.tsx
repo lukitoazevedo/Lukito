@@ -403,6 +403,32 @@ export default function ParticipantArea({
               </div>
             </div>
 
+            {/* COMPARTILHAR LINK DO BOLÃO */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-emerald-500/5 border border-emerald-500/10 rounded-2xl">
+              <div className="space-y-0.5">
+                <span className="text-xs font-bold text-emerald-400 block flex items-center gap-1.5">
+                  <Sparkles size={14} className="text-amber-400 animate-pulse" />
+                  📢 Convide mais Participantes!
+                </span>
+                <span className="text-[11px] text-slate-400 block leading-tight">
+                  Gere um link direto para convidar seus amigos para darem palpites. Eles não terão acesso ao menu administrativo.
+                </span>
+              </div>
+              <button
+                id="btn-share-pool-link"
+                onClick={() => {
+                  const shareUrl = `${window.location.origin}${window.location.pathname}?shared=true`;
+                  navigator.clipboard.writeText(shareUrl).then(() => {
+                    alert("✅ Link do Bolão copiado! Compartilhe o link no WhatsApp. Amigos que usarem este link não terão acesso ao painel de administração.");
+                  });
+                }}
+                className="px-4 py-2 bg-slate-950 hover:bg-slate-800 text-slate-200 border border-slate-800 text-xs font-extrabold rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shrink-0"
+              >
+                <Copy size={13} className="text-emerald-400" />
+                Copiar Link Seguro
+              </button>
+            </div>
+
             {/* PRESENTING ACTIVE PARTIDA DETAILS WITH COUNTDOWN */}
             {currentPartida ? (
               <div id="active-match-hero-card" className="bg-slate-950 border border-slate-800/80 rounded-2xl p-6 space-y-4">

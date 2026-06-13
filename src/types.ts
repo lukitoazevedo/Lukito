@@ -51,3 +51,10 @@ export interface Notificacao {
   data_hora: string;
   lida: boolean;
 }
+
+export interface AdminUser {
+  id: string;
+  username: string;
+  pin: string;
+  created_at: string;
+}

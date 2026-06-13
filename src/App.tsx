@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Bolao, Partida, Palpite, Usuario, Notificacao } from './types';
+import { Bolao, Partida, Palpite, Usuario, Notificacao, AdminUser } from './types';
 import {
   INITIAL_BOLOES,
   INITIAL_PARTIDAS,
@@ -18,7 +18,21 @@ import AdminPanel from './components/AdminPanel';
 import ParticipantArea from './components/ParticipantArea';
 import ResultsArea from './components/ResultsArea';
 
-import { Trophy, Shield, Users, Award, Calendar, HelpCircle, RefreshCw, Volume2, Globe } from 'lucide-react';
+import {
+  Trophy,
+  Shield,
+  Users,
+  Award,
+  Calendar,
+  HelpCircle,
+  RefreshCw,
+  Volume2,
+  Globe,
+  Lock,
+  Key,
+  ShieldAlert,
+  LogIn
+} from 'lucide-react';
 
 export default function App() {
   // Global States loaded from LocalStorage or seeded
@@ -34,6 +48,13 @@ export default function App() {
   // Active Main Navigation View Tab
   const [activeView, setActiveView] = useState<'participante' | 'resultados' | 'administrador'>('participante');
 
+  // Admin credentials state
+  const [admins, setAdmins] = useState<AdminUser[]>([]);
+  const [activeAdmin, setActiveAdmin] = useState<string | null>(null);
+
+  // Link shared views indicator
+  const [isSharedView, setIsSharedView] = useState(false);
+
   // Load state from localStorage on Mount
   useEffect(() => {
     const savedBoloes = localStorage.getItem('bolao_boloes');
@@ -42,6 +63,32 @@ export default function App() {
     const savedPalpites = localStorage.getItem('bolao_palpites');
     const savedNotifs = localStorage.getItem('bolao_notificacoes');
     const savedCurrentUser = localStorage.getItem('bolao_currentUser');
+
+    // Load admin accounts list or seed default
+    const savedAdmins = localStorage.getItem('bolao_admins');
+    if (savedAdmins) {
+      setAdmins(JSON.parse(savedAdmins));
+    } else {
+      const initialAdmins: AdminUser[] = [
+        { id: 'admin-default', username: 'admin', pin: '1234', created_at: new Date().toISOString() }
+      ];
+      setAdmins(initialAdmins);
+      localStorage.setItem('bolao_admins', JSON.stringify(initialAdmins));
+    }
+
+    // Load logged-in admin session
+    const savedActiveAdmin = localStorage.getItem('bolao_activeAdmin');
+    if (savedActiveAdmin) {
+      setActiveAdmin(savedActiveAdmin);
+    }
+
+    // Check shared URL mode
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('shared') === 'true') {
+        setIsSharedView(true);
+      }
+    }
 
     if (savedBoloes) setBoloes(JSON.parse(savedBoloes));
     else {
@@ -217,6 +264,49 @@ export default function App() {
     saveState('bolao_notificacoes', updated);
   };
 
+  // 9. Actions: Delete a Bolão and cascade matches/guesses
+  const handleDeleteBolao = (bolaoId: string) => {
+    const updatedBoloes = boloes.filter(b => b.id !== bolaoId);
+    setBoloes(updatedBoloes);
+    saveState('bolao_boloes', updatedBoloes);
+
+    // Cascade delete partidas associated with this bolao
+    const matchesToRemove = partidas.filter(m => m.bolao_id === bolaoId);
+    const matchesToRemoveIds = matchesToRemove.map(m => m.id);
+    const updatedPartidas = partidas.filter(m => m.bolao_id !== bolaoId);
+    setPartidas(updatedPartidas);
+    saveState('bolao_partidas', updatedPartidas);
+
+    // Cascade delete guesses associated with those matches
+    const updatedPalpites = palpites.filter(p => !matchesToRemoveIds.includes(p.partida_id));
+    setPalpites(updatedPalpites);
+    saveState('bolao_palpites', updatedPalpites);
+  };
+
+  // 10. Actions: Admin additions & deletions
+  const handleAddAdmin = (username: string, pin: string) => {
+    const newAdmin: AdminUser = {
+      id: `admin-${Date.now()}`,
+      username: username.toLowerCase().trim(),
+      pin: pin.trim(),
+      created_at: new Date().toISOString()
+    };
+    const updated = [...admins, newAdmin];
+    setAdmins(updated);
+    saveState('bolao_admins', updated);
+  };
+
+  const handleDeleteAdmin = (adminId: string) => {
+    const updated = admins.filter(a => a.id !== adminId);
+    setAdmins(updated);
+    saveState('bolao_admins', updated);
+  };
+
+  const handleLogoutAdmin = () => {
+    setActiveAdmin(null);
+    localStorage.removeItem('bolao_activeAdmin');
+  };
+
   // Force local state factory reset to seeded values
   const handleResetAppSeededData = () => {
     if (confirm("Deseja restaurar as configurações originais com dados de exemplo? Todos os seus palpites atuais serão sobrescritos.")) {
@@ -226,13 +316,21 @@ export default function App() {
       setPalpites(INITIAL_PALPITES);
       setNotificacoes(INITIAL_NOTIFICACOES);
       setCurrentUser(null);
+      setActiveAdmin(null);
+      
+      const initialAdmins: AdminUser[] = [
+        { id: 'admin-default', username: 'admin', pin: '1234', created_at: new Date().toISOString() }
+      ];
+      setAdmins(initialAdmins);
       
       localStorage.setItem('bolao_boloes', JSON.stringify(INITIAL_BOLOES));
       localStorage.setItem('bolao_partidas', JSON.stringify(INITIAL_PARTIDAS));
       localStorage.setItem('bolao_usuarios', JSON.stringify(INITIAL_USUARIOS));
       localStorage.setItem('bolao_palpites', JSON.stringify(INITIAL_PALPITES));
       localStorage.setItem('bolao_notificacoes', JSON.stringify(INITIAL_NOTIFICACOES));
+      localStorage.setItem('bolao_admins', JSON.stringify(initialAdmins));
       localStorage.removeItem('bolao_currentUser');
+      localStorage.removeItem('bolao_activeAdmin');
     }
   };
 
@@ -280,17 +378,19 @@ export default function App() {
             >
               🏆 Resultados
             </button>
-            <button
-              id="nav-tab-administrador"
-              onClick={() => setActiveView('administrador')}
-              className={`flex-1 sm:flex-none uppercase tracking-wider text-[11px] font-black px-4 py-2.5 rounded-xl transition-all cursor-pointer text-center flex items-center justify-center gap-1.5 ${
-                activeView === 'administrador'
-                  ? 'bg-emerald-500 text-slate-950 shadow-lg font-black'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              🛠️ Admin
-            </button>
+            {!isSharedView && (
+              <button
+                id="nav-tab-administrador"
+                onClick={() => setActiveView('administrador')}
+                className={`flex-1 sm:flex-none uppercase tracking-wider text-[11px] font-black px-4 py-2.5 rounded-xl transition-all cursor-pointer text-center flex items-center justify-center gap-1.5 ${
+                  activeView === 'administrador'
+                    ? 'bg-emerald-500 text-slate-950 shadow-lg font-black'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                🛠️ Admin
+              </button>
+            )}
           </nav>
         </div>
       </header>
@@ -349,16 +449,105 @@ export default function App() {
           )}
 
           {activeView === 'administrador' && (
-            <AdminPanel
-              boloes={boloes}
-              partidas={partidas}
-              usuarios={usuarios}
-              palpites={palpites}
-              onAddBolao={handleAddBolao}
-              onAddPartida={handleAddPartida}
-              onUpdatePalpiteStatus={handleUpdatePalpiteStatus}
-              onSetResultadoOficial={handleSetResultadoOficial}
-            />
+            <>
+              {activeAdmin === null ? (
+                <div id="admin-login-wrapper" className="max-w-md mx-auto bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl relative overflow-hidden my-8">
+                  {/* Styling decoration */}
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-full blur-3xl -z-10"></div>
+                  
+                  <div className="text-center mb-6">
+                    <div className="w-16 h-16 bg-emerald-500/10 text-emerald-400 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-emerald-500/20">
+                      <Lock size={28} />
+                    </div>
+                    <h3 className="text-xl font-bold text-white">Painel de Administração</h3>
+                    <p className="text-xs text-slate-400 mt-1">Autorização necessária para gerenciar bolões, partidas, palpites e administradores.</p>
+                  </div>
+
+                  <form
+                    id="admin-auth-login-form"
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      const target = e.currentTarget;
+                      const usernameInput = target.elements.namedItem('username') as HTMLInputElement;
+                      const pinInput = target.elements.namedItem('pin') as HTMLInputElement;
+                      const username = usernameInput ? usernameInput.value.toLowerCase().trim() : '';
+                      const pin = pinInput ? pinInput.value.trim() : '';
+
+                      const match = admins.find(a => a.username === username && a.pin === pin);
+                      if (match) {
+                        setActiveAdmin(match.username);
+                        localStorage.setItem('bolao_activeAdmin', match.username);
+                      } else {
+                        alert("❌ Nome de usuário ou PIN incorreto. Tente novamente ou use a conta padrão (admin / 1234).");
+                      }
+                    }}
+                    className="space-y-4"
+                  >
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-slate-300 uppercase tracking-wider block">Nome do Administrador</label>
+                      <div className="relative">
+                        <span className="absolute left-3.5 top-3.5 text-slate-400 font-bold">
+                          <Users size={16} />
+                        </span>
+                        <input
+                          name="username"
+                          type="text"
+                          required
+                          placeholder="Ex: admin"
+                          className="w-full pl-10 pr-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-slate-300 uppercase tracking-wider block">PIN / Senha de Acesso</label>
+                      <div className="relative">
+                        <span className="absolute left-3.5 top-3.5 text-slate-400 font-bold">
+                          <Key size={16} />
+                        </span>
+                        <input
+                          name="pin"
+                          type="password"
+                          required
+                          placeholder="Ex: 1234"
+                          className="w-full pl-10 pr-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 font-mono tracking-widest"
+                        />
+                      </div>
+                    </div>
+
+                    <button
+                      type="submit"
+                      className="w-full py-3 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-black rounded-xl shadow-lg transition-all cursor-pointer flex items-center justify-center gap-2 text-sm uppercase mt-6"
+                    >
+                      <LogIn size={16} />
+                      Liberar Acesso
+                    </button>
+
+                    <div className="text-center pt-2">
+                      <span className="text-[10px] text-slate-500 font-sans block">Conta de demonstração padrão:</span>
+                      <span className="text-[11px] text-emerald-500/80 font-mono">admin / 1234</span>
+                    </div>
+                  </form>
+                </div>
+              ) : (
+                <AdminPanel
+                  boloes={boloes}
+                  partidas={partidas}
+                  usuarios={usuarios}
+                  palpites={palpites}
+                  admins={admins}
+                  activeAdmin={activeAdmin}
+                  onAddBolao={handleAddBolao}
+                  onDeleteBolao={handleDeleteBolao}
+                  onAddPartida={handleAddPartida}
+                  onUpdatePalpiteStatus={handleUpdatePalpiteStatus}
+                  onSetResultadoOficial={handleSetResultadoOficial}
+                  onAddAdmin={handleAddAdmin}
+                  onDeleteAdmin={handleDeleteAdmin}
+                  onLogoutAdmin={handleLogoutAdmin}
+                />
+              )}
+            </>
           )}
         </div>
 
