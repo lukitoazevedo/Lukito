@@ -16,7 +16,8 @@ interface ParticipantAreaProps {
   currentUser: Usuario | null;
   notificacoes: Notificacao[];
   activeAdmin: string | null;
-  onLogin: (nome: string, celular: string) => void;
+  onLogin: (nome: string, celular: string) => boolean;
+  onRegister: (nome: string, celular: string) => { success: boolean; error?: string };
   onLogout: () => void;
   onAddPalpite: (partidaId: string, resultado: string) => void;
   onMarkNotificationsAsRead: (userId: string) => void;
@@ -31,6 +32,7 @@ export default function ParticipantArea({
   notificacoes,
   activeAdmin,
   onLogin,
+  onRegister,
   onLogout,
   onAddPalpite,
   onMarkNotificationsAsRead,
@@ -38,6 +40,7 @@ export default function ParticipantArea({
   // Input fields for identity
   const [nomeInput, setNomeInput] = useState('');
   const [celularInput, setCelularInput] = useState('');
+  const [authTab, setAuthTab] = useState<'login' | 'register'>('login');
 
   // Sorter / Active sweepstakes and match selection
   const [selectedBolaoId, setSelectedBolaoId] = useState<string>('');
@@ -122,14 +125,32 @@ export default function ParticipantArea({
     return () => clearInterval(interval);
   }, [currentPartida]);
 
-  // Handle Login
-  const handleLoginSubmit = (e: React.FormEvent) => {
+  // Handle Login and Register Submit
+  const handleAuthSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!nomeInput.trim() || !celularInput.trim()) {
       alert("Por favor, preencha o seu nome e telefone celular para continuar.");
       return;
     }
-    onLogin(nomeInput.trim(), celularInput.trim());
+
+    if (authTab === 'login') {
+      const success = onLogin(nomeInput.trim(), celularInput.trim());
+      if (success) {
+        // Clear forms
+        setNomeInput('');
+        setCelularInput('');
+      } else {
+        alert("❌ Usuário não encontrado ou Nome/Celular incorretos.\n\nPara fazer login, informe os mesmos dados cadastrados (considerando letras maiúsculas/minúsculas). Caso não possua conta, crie uma na aba 'Cadastrar'!");
+      }
+    } else {
+      const res = onRegister(nomeInput.trim(), celularInput.trim());
+      if (res.success) {
+        setNomeInput('');
+        setCelularInput('');
+      } else {
+        alert(`❌ Falha no Cadastro: ${res.error || 'Erro desconhecido.'}`);
+      }
+    }
   };
 
   // Matrix generation grid values (0 to 5)
@@ -245,20 +266,58 @@ export default function ParticipantArea({
 
       {/* SECTION 1: MANDATORY REGISTER IF NOT AUTHENTICATED */}
       {!currentUser ? (
-        <div id="participant-auth-card" className="bg-slate-900 border border-slate-800 p-6 md:p-8 rounded-3xl space-y-6 max-w-xl mx-auto text-center">
+        <div id="participant-auth-card" className="bg-slate-900 border border-slate-800 p-6 md:p-8 rounded-3xl space-y-6 max-w-xl mx-auto text-center animate-fade-in">
           <div className="mx-auto w-16 h-16 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-400">
             <User size={32} />
           </div>
           <div>
             <h3 className="text-xl font-bold text-white">Participe dos Bolões Ativos</h3>
             <p className="text-xs text-slate-400 mt-2 max-w-md mx-auto">
-              Para registrar e validar palpites na matriz, você precisa informar seu nome e número de whatsapp.
+              Acesse sua conta ou crie um cadastro simples com seu Nome e Celular para começar a dar palpites na matriz de resultados!
             </p>
           </div>
 
-          <form id="form-participant-login" onSubmit={handleLoginSubmit} className="space-y-4 text-left">
+          {/* TAB BAR FOR REGISTER / LOGIN */}
+          <div className="flex bg-slate-950 p-1 border border-slate-800/80 rounded-2xl">
+            <button
+              id="auth-tab-login-btn"
+              type="button"
+              onClick={() => {
+                setAuthTab('login');
+                setNomeInput('');
+                setCelularInput('');
+              }}
+              className={`flex-1 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
+                authTab === 'login'
+                  ? 'bg-emerald-500 text-slate-950 shadow-md'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              Entrar (Login)
+            </button>
+            <button
+              id="auth-tab-register-btn"
+              type="button"
+              onClick={() => {
+                setAuthTab('register');
+                setNomeInput('');
+                setCelularInput('');
+              }}
+              className={`flex-1 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
+                authTab === 'register'
+                  ? 'bg-emerald-500 text-slate-950 shadow-md'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              Cadastrar-se
+            </button>
+          </div>
+
+          <form id="form-participant-auth" onSubmit={handleAuthSubmit} className="space-y-4 text-left">
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-300 uppercase tracking-wider block">Seu Nome Completo *</label>
+              <label className="text-xs font-bold text-slate-300 uppercase tracking-wider block">
+                {authTab === 'login' ? 'Nome de Usuário cadastrado *' : 'Seu Nome Completo *'}
+              </label>
               <div className="relative">
                 <span className="absolute left-4 top-3.5 text-slate-500">
                   <User size={16} />
@@ -267,7 +326,7 @@ export default function ParticipantArea({
                   id="auth-input-name"
                   type="text"
                   required
-                  placeholder="Seu nome completo"
+                  placeholder={authTab === 'login' ? "Exatamente como cadastrado" : "Seu nome completo"}
                   value={nomeInput}
                   onChange={(e) => setNomeInput(e.target.value)}
                   className="w-full pl-11 pr-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm"
@@ -276,7 +335,9 @@ export default function ParticipantArea({
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-300 uppercase tracking-wider block">Número do Celular (com DDD) *</label>
+              <label className="text-xs font-bold text-slate-300 uppercase tracking-wider block">
+                {authTab === 'login' ? 'Número do Celular cadastrado (com DDD) *' : 'Número do Celular (com DDD) *'}
+              </label>
               <div className="relative">
                 <span className="absolute left-4 top-3.5 text-slate-500">
                   <Phone size={16} />
@@ -291,15 +352,15 @@ export default function ParticipantArea({
                   className="w-full pl-11 pr-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm font-mono"
                 />
               </div>
-              <span className="text-[10px] text-slate-500 italic block">Somente números, incluindo o DDD. Requerido para receber premiações.</span>
+              <span className="text-[10px] text-slate-500 italic block">Somente números na digitação, incluindo o DDD. Requerido para receber premiações.</span>
             </div>
 
             <button
               id="btn-confirm-auth"
               type="submit"
-              className="w-full py-3.5 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold rounded-xl shadow-lg transition-colors cursor-pointer text-sm"
+              className="w-full py-3.5 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold rounded-xl shadow-lg transition-colors cursor-pointer text-sm uppercase tracking-wider font-extrabold"
             >
-              Começar a Palpitar agora!
+              {authTab === 'login' ? 'Entrar no Sistema' : 'Criar minha Conta'}
             </button>
           </form>
         </div>

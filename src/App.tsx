@@ -250,28 +250,53 @@ export default function App() {
     saveState('bolao_partidas', updated);
   };
 
-  // 3. Actions: Participant log-in or registration
-  const handleLogin = (nome: string, celular: string) => {
+  // 3. Actions: Participant log-in
+  const handleLogin = (nome: string, celular: string): boolean => {
     // Sanitize values
     const cleanPhone = celular.replace(/\D/g, ''); // leave only digits
+    const cleanNomeInput = nome.trim().toLowerCase();
     
-    // Check if user already exists
-    let user = usuarios.find(u => u.celular === cleanPhone);
+    // Check if user already exists matching BOTH Name and Cellphone
+    const user = usuarios.find(
+      u => u.celular === cleanPhone && u.nome_usuario.trim().toLowerCase() === cleanNomeInput
+    );
 
-    if (!user) {
-      // Create new user record
-      user = {
-        id: `user-${Date.now()}`,
-        nome_usuario: nome,
-        celular: cleanPhone
-      };
-      const updatedUsers = [...usuarios, user];
-      setUsuarios(updatedUsers);
-      saveState('bolao_usuarios', updatedUsers);
+    if (user) {
+      setCurrentUser(user);
+      saveState('bolao_currentUser', user);
+      return true;
+    }
+    return false;
+  };
+
+  // Actions: Participant registration
+  const handleRegister = (nome: string, celular: string): { success: boolean; error?: string } => {
+    // Sanitize values
+    const cleanPhone = celular.replace(/\D/g, ''); // leave only digits
+    const cleanNome = nome.trim();
+
+    if (!cleanNome || !cleanPhone) {
+      return { success: false, error: "Nome e celular são campos obrigatórios." };
     }
 
-    setCurrentUser(user);
-    saveState('bolao_currentUser', user);
+    // Check if phone number is already registered
+    const existing = usuarios.find(u => u.celular === cleanPhone);
+    if (existing) {
+      return { success: false, error: "Este número de celular já possui cadastro no sistema!" };
+    }
+
+    const newUser: Usuario = {
+      id: `user-${Date.now()}`,
+      nome_usuario: cleanNome,
+      celular: cleanPhone
+    };
+
+    const updatedUsers = [...usuarios, newUser];
+    setUsuarios(updatedUsers);
+    saveState('bolao_usuarios', updatedUsers);
+    setCurrentUser(newUser);
+    saveState('bolao_currentUser', newUser);
+    return { success: true };
   };
 
   // 4. Actions: logout
@@ -544,6 +569,7 @@ export default function App() {
               notificacoes={notificacoes}
               activeAdmin={activeAdmin}
               onLogin={handleLogin}
+              onRegister={handleRegister}
               onLogout={handleLogout}
               onAddPalpite={handleAddPalpite}
               onMarkNotificationsAsRead={handleMarkNotificationsAsRead}
