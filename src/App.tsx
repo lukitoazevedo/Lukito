@@ -221,7 +221,27 @@ export default function App() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ [serverKey]: data })
-    }).catch(err => console.error(`Error saving ${key} to server:`, err));
+    })
+    .then(res => res.json())
+    .then(resData => {
+      if (resData && resData.success && resData.state) {
+        const s = resData.state;
+        if (Array.isArray(s.boloes)) setBoloes(s.boloes);
+        if (Array.isArray(s.partidas)) setPartidas(s.partidas);
+        if (Array.isArray(s.usuarios)) {
+          setUsuarios(s.usuarios);
+          if (currentUser && !s.usuarios.some((u: any) => u.id === currentUser.id)) {
+            setCurrentUser(null);
+            sessionStorage.removeItem('bolao_currentUser');
+            localStorage.removeItem('bolao_currentUser');
+          }
+        }
+        if (Array.isArray(s.palpites)) setPalpites(s.palpites);
+        if (Array.isArray(s.notificacoes)) setNotificacoes(s.notificacoes);
+        if (Array.isArray(s.admins)) setAdmins(s.admins);
+      }
+    })
+    .catch(err => console.error(`Error saving ${key} to server:`, err));
   };
 
   // 1. Actions: add a sweepstakes (Bolão)

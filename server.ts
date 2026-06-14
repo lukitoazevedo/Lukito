@@ -81,7 +81,7 @@ app.post("/api/state", (req, res) => {
       }
     });
 
-    res.json({ success: true });
+    res.json({ success: true, state: dbState });
   } else {
     res.status(400).json({ error: "Invalid updates format" });
   }
