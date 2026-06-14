@@ -63,7 +63,7 @@ export default function App() {
     const savedUsuarios = localStorage.getItem('bolao_usuarios');
     const savedPalpites = localStorage.getItem('bolao_palpites');
     const savedNotifs = localStorage.getItem('bolao_notificacoes');
-    const savedCurrentUser = localStorage.getItem('bolao_currentUser');
+    const savedCurrentUser = sessionStorage.getItem('bolao_currentUser');
 
     const savedAdmins = localStorage.getItem('bolao_admins');
     if (savedAdmins) {
@@ -206,7 +206,16 @@ export default function App() {
 
   // Save changes helper with automatic server backup synchronization
   const saveState = (key: string, data: any) => {
-    localStorage.setItem(key, JSON.stringify(data));
+    if (key === 'bolao_currentUser') {
+      if (data === null) {
+        sessionStorage.removeItem('bolao_currentUser');
+        localStorage.removeItem('bolao_currentUser');
+      } else {
+        sessionStorage.setItem('bolao_currentUser', JSON.stringify(data));
+      }
+    } else {
+      localStorage.setItem(key, JSON.stringify(data));
+    }
     const serverKey = key.replace('bolao_', '');
     fetch('/api/state', {
       method: 'POST',
@@ -296,6 +305,7 @@ export default function App() {
   // 4. Actions: logout
   const handleLogout = () => {
     setCurrentUser(null);
+    sessionStorage.removeItem('bolao_currentUser');
     localStorage.removeItem('bolao_currentUser');
   };
 

@@ -140,7 +140,8 @@ export default function ParticipantArea({
         setNomeInput('');
         setCelularInput('');
       } else {
-        alert("❌ Usuário não encontrado ou Nome/Celular incorretos.\n\nPara fazer login, informe os mesmos dados cadastrados (considerando letras maiúsculas/minúsculas). Caso não possua conta, crie uma na aba 'Cadastrar'!");
+        alert("⚠️ Usuário não cadastrado ou dados incorretos!\n\nVocê será direcionado para a aba 'Cadastrar-se' para criar seu cadastro com estas mesmas informações.");
+        setAuthTab('register'); // Force registration
       }
     } else {
       const res = onRegister(nomeInput.trim(), celularInput.trim());

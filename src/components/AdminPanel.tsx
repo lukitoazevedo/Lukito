@@ -358,40 +358,6 @@ export default function AdminPanel({
       {/* DASHBOARD TAB */}
       {activeTab === 'dashboard' && (
         <div id="tab-content-dashboard" className="space-y-6">
-          
-          {/* COMPARTILHAMENTO DE LINK SEGURO (ADMIN BANNER) */}
-          <div id="admin-share-link-banner" className="bg-gradient-to-r from-emerald-500/10 via-slate-900 to-slate-900 border border-emerald-500/20 p-5 rounded-3xl flex flex-col md:flex-row items-center justify-between gap-5">
-            <div className="flex items-center gap-3.5">
-              <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center shrink-0 border border-emerald-500/25">
-                <Globe size={24} className="animate-pulse text-emerald-400" />
-              </div>
-              <div className="text-center md:text-left space-y-1">
-                <h4 className="text-sm font-black text-white flex items-center justify-center md:justify-start gap-1.5 uppercase tracking-wider">
-                  📢 Compartilhar Bolão com Apostadores
-                </h4>
-                <p className="text-xs text-slate-400 max-w-2xl leading-relaxed">
-                  Copie o link seguro para enviar aos participantes no WhatsApp. Ao acessarem, eles visualizarão a mesma base de dados atualizada em tempo real (bolões, partidas e palpites), mas a aba administrativa <strong className="text-emerald-400">🛠️ Admin</strong> estará completamente bloqueada e invisível para eles!
-                </p>
-              </div>
-            </div>
-            
-            <button
-              id="admin-btn-share-app"
-              onClick={() => {
-                const shareUrl = `${window.location.origin}${window.location.pathname}?shared=true`;
-                navigator.clipboard.writeText(shareUrl).then(() => {
-                  alert("✅ Link de participante copiado! Envie para seus amigos no WhatsApp.\n\nA aba de Administração estará oculta e bloqueada para qualquer pessoa que acessar através de links seguros.");
-                }).catch(err => {
-                  console.error("Erro ao copiar link:", err);
-                  alert("❌ Ops, não conseguimos acessar o clipboard. Segue o link para copiar manualmente:\n\n" + shareUrl);
-                });
-              }}
-              className="w-full md:w-auto px-5 py-3 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-black rounded-xl text-xs uppercase tracking-wider cursor-pointer shadow-lg shadow-emerald-500/15 flex items-center justify-center gap-2 transition-all shrink-0 hover:scale-[1.02] active:scale-[0.98]"
-            >
-              <Copy size={14} />
-              Copiar Link Seguro
-            </button>
-          </div>
 
           {/* STATS GENERAL GRID */}
           <div id="stats-dashboard-grid" className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
