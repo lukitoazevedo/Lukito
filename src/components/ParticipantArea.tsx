@@ -525,54 +525,6 @@ export default function ParticipantArea({
                     <span className="text-2xl font-black text-white font-mono">Placar: {currentPartida.resultado_oficial}</span>
                   </div>
                 )}
-
-                {/* COMPARTILHAR LINK DO BOLÃO (ADMIN EXCLUSIVE) INTEGRATED INTO THE ACTIVE MATCH DETAILS CARD */}
-                {activeAdmin !== null && (
-                  <div className="mt-4 pt-4 border-t border-slate-900 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-emerald-500/5 p-3 rounded-xl border border-emerald-500/10">
-                    <div className="space-y-0.5">
-                      <span className="text-[11px] font-bold text-emerald-400 flex items-center gap-1.5">
-                        <Sparkles size={13} className="text-amber-400 animate-pulse" />
-                        📢 Compartilhar Bolão (Exclusivo Adm)
-                      </span>
-                      <span className="text-[10px] text-slate-400 block leading-tight">
-                        Este botão é exibido apenas para o Administrador ativo. Amigos que usarem este link terão as informações atualizadas e não verão a aba administrativa.
-                      </span>
-                    </div>
-                    <button
-                      id="btn-share-pool-link"
-                      onClick={() => {
-                        try {
-                          const dataToShare = {
-                            boloes: boloes,
-                            partidas: partidas
-                          };
-                          const jsonStr = JSON.stringify(dataToShare);
-                          const utf8Bytes = new TextEncoder().encode(jsonStr);
-                          let binString = "";
-                          for (let i = 0; i < utf8Bytes.length; i++) {
-                            binString += String.fromCharCode(utf8Bytes[i]);
-                          }
-                          const base64Data = btoa(binString);
-                          const shareUrl = `${window.location.origin}${window.location.pathname}?shared=true&data=${encodeURIComponent(base64Data)}`;
-                          
-                          navigator.clipboard.writeText(shareUrl).then(() => {
-                            alert("✅ Link do Bolão copiado! Compartilhe o link no WhatsApp. Amigos que usarem este link terão os bolões e partidas 100% atualizados (com novos bolões inclusos e os removidos ocultados) e não terão acesso ao menu administrativo.");
-                          });
-                        } catch (err) {
-                          console.error("Erro ao gerar link de compartilhamento:", err);
-                          const fallbackUrl = `${window.location.origin}${window.location.pathname}?shared=true`;
-                          navigator.clipboard.writeText(fallbackUrl).then(() => {
-                            alert("✅ Link do Bolão copiado (Link Geral).");
-                          });
-                        }
-                      }}
-                      className="px-3 py-1.5 bg-slate-950 hover:bg-slate-800 text-slate-200 border border-slate-800 text-[11px] font-black rounded-lg transition-all flex items-center gap-1.5 cursor-pointer shrink-0"
-                    >
-                      <Copy size={12} className="text-emerald-400" />
-                      Copiar Link Seguro
-                    </button>
-                  </div>
-                )}
               </div>
             ) : (
               <div className="text-center py-6 text-slate-500">

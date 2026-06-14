@@ -105,6 +105,7 @@ export default function App() {
       const params = new URLSearchParams(window.location.search);
       if (params.get('shared') === 'true') {
         setIsSharedView(true);
+        setActiveView('participante');
       }
     }
 
@@ -609,7 +610,7 @@ export default function App() {
             />
           )}
 
-          {activeView === 'administrador' && (
+          {activeView === 'administrador' && !isSharedView && (
             <>
               {activeAdmin === null ? (
                 <div id="admin-login-wrapper" className="max-w-md mx-auto bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl relative overflow-hidden my-8">
